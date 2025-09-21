@@ -50,5 +50,6 @@ export async function generateTransform(params: { task: 'rewrite'|'summarize'; t
       break;
     }
   }
-  throw new UpstreamError('Gemini request failed', lastErr?.status ?? lastErr?.response?.status);
+  const msg = `Gemini request failed: ${lastErr?.message || 'unknown error'}`;
+  throw new UpstreamError(msg, lastErr?.status ?? lastErr?.response?.status);
 }

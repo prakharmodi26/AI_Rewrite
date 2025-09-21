@@ -11,6 +11,8 @@ import { logger } from './middleware/logger.js';
 import health from './routes/health.js';
 import transform from './routes/transform.js';
 import oss from './routes/oss.js';
+import { logError } from './middleware/logger.js';
+import { toHttp } from './utils/errors.js';
 
 const app = express();
 
@@ -29,10 +31,11 @@ app.use(health);
 app.use(transform);
 app.use(oss);
 
-// Global error handler (hide internals)
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error('[error]', err?.name || 'Error');
-  res.status(500).json({ error: 'Internal Server Error' });
+// Global error handler: log detailed error (without bodies) and return mapped response
+app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  logError(req as any, err);
+  const { status, body } = toHttp(err);
+  res.status(status).json(body);
 });
 
 app.listen(env.PORT, () => {

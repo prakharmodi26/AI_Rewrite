@@ -1,6 +1,6 @@
 /**
  * health.ts
- * GET /healthz returns basic health.
+ * GET /healthz – simple health check.
  */
 import { Router } from 'express';
 const router = Router();

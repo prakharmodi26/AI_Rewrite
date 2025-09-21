@@ -9,6 +9,7 @@ import { transformSchema } from '../utils/validators.js';
 import { maskPII, unmaskPII } from '../utils/redact.js';
 import { generateTransform } from '../services/gemini.js';
 import { BadRequestError, toHttp } from '../utils/errors.js';
+import { logError } from '../middleware/logger.js';
 const router = Router();
 router.post('/transform', rateLimit, hmacAuth, async (req, res) => {
     const started = Date.now();
@@ -46,8 +47,7 @@ router.post('/transform', rateLimit, hmacAuth, async (req, res) => {
     }
     catch (err) {
         const { status, body } = toHttp(err);
-        const id = req.id || '-';
-        console.warn(`[${id}] /transform ${status} error=${err?.name || 'Error'}`);
+        logError(req, err, { route: '/transform' });
         res.status(status).json(body);
     }
 });
