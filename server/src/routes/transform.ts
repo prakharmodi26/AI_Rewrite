@@ -17,9 +17,23 @@ router.post('/transform', rateLimit, hmacAuth, async (req: Request, res: Respons
   const started = Date.now();
   try {
     const parsed = transformSchema.safeParse(req.body);
-    if (!parsed.success) throw new BadRequestError('Invalid body');
+    if (!parsed.success) {
+      if (process.env.DEBUG_BODY === 'true') {
+        const raw = (req as any).rawBody as string | undefined;
+        const sample = raw ? raw.slice(0, 2000) : undefined;
+        console.error('[debug] invalid /transform body', {
+          id: (req as any).id || '-',
+          content_type: req.headers['content-type'],
+          raw_len: raw?.length,
+          raw_sample: sample,
+          parsed_typeof: typeof req.body,
+          zod_errors: parsed.error.errors
+        });
+      }
+      throw new BadRequestError('Invalid body');
+    }
 
-    let { task, tone, input, redact } = parsed.data;
+  let { task, input, redact } = parsed.data as any;
 
     // Reject absurd/binary payloads: if raw body contains large HTML
     const raw = (req as any).rawBody as string | undefined;
@@ -43,7 +57,7 @@ router.post('/transform', rateLimit, hmacAuth, async (req: Request, res: Respons
       map = resu.map;
     }
 
-    const { output, model, tokens } = await generateTransform({ task, tone, input });
+  const { output, model, tokens } = await generateTransform(parsed.data as any);
     const finalOut = map ? unmaskPII(output, map) : output;
 
     const latency_ms = Date.now() - started;
@@ -53,7 +67,14 @@ router.post('/transform', rateLimit, hmacAuth, async (req: Request, res: Respons
     res.json({ output: finalOut, model, latency_ms });
   } catch (err) {
     const { status, body } = toHttp(err);
-    logError(req as any, err, { route: '/transform' });
+    const extra = process.env.DEBUG_BODY === 'true'
+      ? {
+          route: '/transform',
+          content_type: req.headers['content-type'],
+          body_sample: (req as any).rawBody ? String((req as any).rawBody).slice(0, 2000) : undefined
+        }
+      : { route: '/transform' };
+    logError(req as any, err, extra);
     res.status(status).json(body);
   }
 });

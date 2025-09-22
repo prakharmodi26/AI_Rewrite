@@ -26,8 +26,8 @@ async function callGemini(prompt: string): Promise<{ text: string; tokens?: { in
   return { text, tokens };
 }
 
-export async function generateTransform(params: { task: 'rewrite'|'summarize'; tone: 'clear'|'friendly'|'concise'|'formal'|'grammar'; input: string }): Promise<{ output: string; model: string; tokens?: { in: number; out: number } }> {
-  const prompt = buildPrompt(params.task, params.tone, params.input);
+export async function generateTransform(params: { task: 'rewrite'|'grammar'|'summarize'|'shorten'|'expand'; input: string; tone?: 'formal'|'friendly'|'confident'|'persuasive'|'casual'; percent?: 10|20|30|40|50|60; summary_level?: 'light'|'medium'|'heavy' }): Promise<{ output: string; model: string; tokens?: { in: number; out: number } }> {
+  const prompt = buildPrompt(params);
 
   const to = safety.timeoutMs;
   let lastErr: any = null;

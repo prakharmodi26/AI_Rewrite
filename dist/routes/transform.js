@@ -15,8 +15,21 @@ router.post('/transform', rateLimit, hmacAuth, async (req, res) => {
     const started = Date.now();
     try {
         const parsed = transformSchema.safeParse(req.body);
-        if (!parsed.success)
+        if (!parsed.success) {
+            if (process.env.DEBUG_BODY === 'true') {
+                const raw = req.rawBody;
+                const sample = raw ? raw.slice(0, 2000) : undefined;
+                console.error('[debug] invalid /transform body', {
+                    id: req.id || '-',
+                    content_type: req.headers['content-type'],
+                    raw_len: raw?.length,
+                    raw_sample: sample,
+                    parsed_typeof: typeof req.body,
+                    zod_errors: parsed.error.errors
+                });
+            }
             throw new BadRequestError('Invalid body');
+        }
         let { task, tone, input, redact } = parsed.data;
         // Reject absurd/binary payloads: if raw body contains large HTML
         const raw = req.rawBody;
@@ -47,7 +60,14 @@ router.post('/transform', rateLimit, hmacAuth, async (req, res) => {
     }
     catch (err) {
         const { status, body } = toHttp(err);
-        logError(req, err, { route: '/transform' });
+        const extra = process.env.DEBUG_BODY === 'true'
+            ? {
+                route: '/transform',
+                content_type: req.headers['content-type'],
+                body_sample: req.rawBody ? String(req.rawBody).slice(0, 2000) : undefined
+            }
+            : { route: '/transform' };
+        logError(req, err, extra);
         res.status(status).json(body);
     }
 });
